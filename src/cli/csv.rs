@@ -1,21 +1,6 @@
-use clap::{Args, Parser, Subcommand};
-use std::path::Path;
+use super::verify_input_file;
+use clap::Args;
 use std::str::FromStr;
-
-// rcli csv -i input.csv -o output.json --header -d ','
-#[derive(Parser, Debug)]
-#[command(name = "rcli",author, version, about, long_about = None)]
-pub struct Opts {
-    #[command(subcommand)]
-    pub cmd: SubCommand,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum SubCommand {
-    Csv(Csv),
-    #[command(name = "genpass", about = "Generate a random password")]
-    GenPass(GenPassOpts),
-}
 
 #[derive(Debug, Clone, Copy)]
 pub enum OutputFormat {
@@ -56,26 +41,4 @@ pub struct Csv {
     pub header: bool,
     #[arg(short, long, default_value_t = ',')]
     pub delimiter: char,
-}
-
-#[derive(Debug, Args)]
-pub struct GenPassOpts {
-    #[arg(short, long, default_value_t = 16)]
-    pub length: u8,
-    #[arg(long, default_value_t = true)]
-    pub uppercase: bool,
-    #[arg(long, default_value_t = true)]
-    pub lowercase: bool,
-    #[arg(long, default_value_t = true)]
-    pub number: bool,
-    #[arg(long, default_value_t = true)]
-    pub symbol: bool,
-}
-
-fn verify_input_file(filename: &str) -> Result<String, String> {
-    if Path::new(filename).exists() {
-        Ok(filename.to_string())
-    } else {
-        Err(format!("Input file {} does not exist", filename))
-    }
 }
