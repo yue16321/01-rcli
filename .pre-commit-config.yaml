@@ -9,6 +9,7 @@ repos:
       - id: check-symlinks
       - id: check-yaml
       - id: end-of-file-fixer
+        exclude: fixtures/
       - id: mixed-line-ending
       - id: trailing-whitespace
   - repo: https://github.com/psf/black

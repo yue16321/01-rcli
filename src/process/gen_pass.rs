@@ -1,5 +1,4 @@
-use rand::prelude::{IndexedRandom, SliceRandom};
-use zxcvbn::zxcvbn;
+use rand::prelude::SliceRandom;
 
 const UPPER: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ";
 const LOWER: &[u8] = b"abcdefghijkmnopqrstuvwxyz";
@@ -12,8 +11,8 @@ pub fn gen_pass(
     lowercase: bool,
     number: bool,
     symbol: bool,
-) -> anyhow::Result<()> {
-    let mut rng = rand::rng();
+) -> anyhow::Result<String> {
+    let mut rng = rand::thread_rng();
     let mut password = Vec::new();
     let mut chars = Vec::new();
     if uppercase {
@@ -52,9 +51,7 @@ pub fn gen_pass(
         password.push(*index);
     }
     password.shuffle(&mut rng);
-    let password = String::from_utf8_lossy(&password);
-    println!("{}", password);
-    let estimate = zxcvbn(&password, &[]);
-    eprintln!("Password strength: {}", estimate.score());
-    Ok(())
+    let password = String::from_utf8(password)?;
+
+    Ok(password)
 }

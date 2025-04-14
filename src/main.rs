@@ -1,7 +1,13 @@
+use base64::Engine;
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use clap::Parser;
 use rcli::{
-    Base64SubCommand, Opts, SubCommand, gen_pass, process_csv, process_decode, process_encode,
+    Base64SubCommand, Opts, SubCommand, TextSubCommand, gen_pass, get_content, get_reader,
+    process_csv, process_decode, process_encode, process_text_key_generate, process_text_sign,
+    process_text_verify,
 };
+use std::fs;
+use zxcvbn::zxcvbn;
 
 fn main() -> anyhow::Result<()> {
     let opts = Opts::parse();
@@ -10,20 +16,54 @@ fn main() -> anyhow::Result<()> {
             process_csv(opts)?;
         }
         SubCommand::GenPass(opts) => {
-            gen_pass(
+            let password = gen_pass(
                 opts.length,
                 opts.uppercase,
                 opts.lowercase,
                 opts.number,
                 opts.symbol,
             )?;
+            println!("{}", password);
+            let estimate = zxcvbn(&password, &[]);
+            eprintln!("Password strength: {}", estimate.score());
         }
         SubCommand::Base64(subcmd) => match subcmd {
             Base64SubCommand::Encode(opts) => {
-                process_encode(&opts.input, opts.format)?;
+                let encoded = process_encode(&opts.input, opts.format)?;
+                println!("{}", encoded);
             }
             Base64SubCommand::Decode(opts) => {
-                process_decode(&opts.input, opts.format)?;
+                let decoded = process_decode(&opts.input, opts.format)?;
+                println!("{}", String::from_utf8_lossy(&decoded));
+            }
+        },
+        SubCommand::Text(subcmd) => match subcmd {
+            TextSubCommand::Sign(opts) => {
+                let key = get_content(&opts.key)?;
+                let sig = process_text_sign(&mut get_reader(&opts.input)?, &key, opts.format)?;
+                let encoded = BASE64_URL_SAFE_NO_PAD.encode(sig);
+                println!("{}", encoded);
+            }
+            TextSubCommand::Verify(opts) => {
+                let key = get_content(&opts.key)?;
+                let encoded = BASE64_URL_SAFE_NO_PAD.decode(&opts.sig)?;
+                let verified = process_text_verify(
+                    &mut get_reader(&opts.input)?,
+                    &key,
+                    &encoded,
+                    opts.format,
+                )?;
+                if verified {
+                    println!("✓ Signature verified");
+                } else {
+                    println!("⚠ Signature not verified");
+                }
+            }
+            TextSubCommand::Gen(opts) => {
+                let key = process_text_key_generate(opts.format)?;
+                for (k, v) in key {
+                    fs::write(opts.output_path.join(k), v)?;
+                }
             }
         },
     }
