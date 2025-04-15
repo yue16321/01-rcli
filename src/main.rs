@@ -3,10 +3,11 @@ use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use clap::Parser;
 use rcli::{
     Base64SubCommand, Opts, SubCommand, TextSubCommand, gen_pass, get_content, get_reader,
-    process_csv, process_decode, process_encode, process_text_key_generate, process_text_sign,
-    process_text_verify,
+    process_csv, process_decode, process_encode, process_text_decrypt, process_text_encrypt,
+    process_text_key_generate, process_text_sign, process_text_verify,
 };
 use std::fs;
+use std::io::Write;
 use zxcvbn::zxcvbn;
 
 fn main() -> anyhow::Result<()> {
@@ -23,7 +24,9 @@ fn main() -> anyhow::Result<()> {
                 opts.number,
                 opts.symbol,
             )?;
-            println!("{}", password);
+            print!("{}", password);
+            std::io::stdout().flush()?;
+            eprintln!(); // 使用标准
             let estimate = zxcvbn(&password, &[]);
             eprintln!("Password strength: {}", estimate.score());
         }
@@ -64,6 +67,18 @@ fn main() -> anyhow::Result<()> {
                 for (k, v) in key {
                     fs::write(opts.output_path.join(k), v)?;
                 }
+            }
+            TextSubCommand::Encrypt(opts) => {
+                let key = get_content(&opts.key)?;
+                let mut input = get_reader(&opts.input)?;
+                let ciphertext = process_text_encrypt(&mut input, &key)?;
+                println!("encrypt: {}", ciphertext);
+            }
+            TextSubCommand::Decrypt(opts) => {
+                let key = get_content(&opts.key)?;
+                let mut input = get_reader(&opts.input)?;
+                let plaintext = process_text_decrypt(&mut input, &key)?;
+                println!("decrypt: {}", String::from_utf8_lossy(&plaintext));
             }
         },
     }

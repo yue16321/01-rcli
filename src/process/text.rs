@@ -1,5 +1,9 @@
 use crate::cli::TextSignFormat;
 use crate::{gen_pass, read_content};
+use base64::Engine;
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
+use chacha20poly1305::aead::Aead;
+use chacha20poly1305::{AeadCore, ChaCha20Poly1305, Key, KeyInit, Nonce};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
 use std::collections::HashMap;
@@ -138,4 +142,26 @@ pub fn process_text_key_generate(
         TextSignFormat::Blake3 => Blake3::generate(),
         TextSignFormat::Ed25519 => Ed25519Signer::generate(),
     }
+}
+pub fn process_text_encrypt(reader: &mut dyn Read, key: &[u8]) -> anyhow::Result<String> {
+    let content = read_content(reader)?;
+    let key = Key::from_slice(key);
+    let cipher = ChaCha20Poly1305::new(key);
+    let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng); // 96-bits; unique per message
+    let ciphertext = cipher
+        .encrypt(&nonce, content.as_slice())
+        .map_err(|e| anyhow::anyhow!("encrypt failed:{}", e))?;
+    let nonce_ciphertext = [nonce.as_slice(), &ciphertext].concat();
+    Ok(BASE64_URL_SAFE_NO_PAD.encode(&nonce_ciphertext))
+}
+pub fn process_text_decrypt(reader: &mut dyn Read, key: &[u8]) -> anyhow::Result<Vec<u8>> {
+    let content = read_content(reader)?;
+    let content = BASE64_URL_SAFE_NO_PAD.decode(content)?;
+    let key = Key::from_slice(key);
+    let cipher = ChaCha20Poly1305::new(key);
+    let nonce = Nonce::from_slice(&content[..12]);
+    let plaintext = cipher
+        .decrypt(nonce, &content[12..])
+        .map_err(|e| anyhow::anyhow!("decrypt failed:{}", e))?;
+    Ok(plaintext)
 }

@@ -11,6 +11,10 @@ pub enum TextSubCommand {
     Verify(TextVerifyOpts),
     #[command(about = "Generate a new text")]
     Gen(TextKeyGenOpts),
+    #[command(about = "encrypt a text ")]
+    Encrypt(EncryptOpts),
+    #[command(about = "decrypt a text")]
+    Decrypt(DecryptOpts),
 }
 
 #[derive(Debug, Args)]
@@ -59,4 +63,20 @@ impl FromStr for TextSignFormat {
             _ => Err(format!("Invalid format: {}", s)),
         }
     }
+}
+
+#[derive(Debug, Args)]
+pub struct EncryptOpts {
+    #[arg(short, long,value_parser=verify_input_file,default_value = "-")]
+    pub input: String,
+    #[arg(short, long,value_parser=verify_input_file)]
+    pub key: String,
+}
+
+#[derive(Debug, Args)]
+pub struct DecryptOpts {
+    #[arg(short, long,value_parser=verify_input_file,default_value = "-")]
+    pub input: String,
+    #[arg(short, long,value_parser=verify_input_file)]
+    pub key: String,
 }
